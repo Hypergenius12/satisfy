@@ -2,63 +2,267 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Filings</title>
+<title>Filings - WebGL Realism Edition</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap">
 <style>
-:root{--bg:#05070a;--ink:#a9bccb}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#05070a}}
-:root[data-theme="dark"]{--bg:#05070a}
-html,body{height:100%;margin:0;background:var(--bg);overflow:hidden}
-#st{position:fixed;inset:0}
-canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
-#c{cursor:none;touch-action:none}
-#gl{mix-blend-mode:screen;opacity:.85;pointer-events:none;filter:blur(5px)}
-.vig{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 46%,transparent 30%,rgba(0,0,0,.55) 76%,rgba(0,0,0,.94) 100%)}
-.grain{position:fixed;left:-50%;top:-50%;width:200%;height:200%;pointer-events:none;opacity:.06;mix-blend-mode:overlay;animation:g .9s steps(6) infinite}
-@keyframes g{0%{transform:translate(0,0)}25%{transform:translate(-4%,3%)}50%{transform:translate(3%,-5%)}75%{transform:translate(5%,4%)}100%{transform:translate(0,0)}}
-.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);display:flex;gap:10px;padding:8px 12px;border-radius:40px;background:rgba(8,11,15,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:inset 0 0 0 1px rgba(170,195,215,.12)}
-.dock button{width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:var(--ink);display:grid;place-items:center;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(170,195,215,.16);transition:box-shadow .25s,background .25s,transform .18s,color .25s}
-.dock button:hover{box-shadow:inset 0 0 0 1px rgba(200,225,245,.6)}
-.dock button:active{transform:scale(.88)}
-.dock button:focus-visible{outline:2px solid #cfe6ff;outline-offset:3px}
-.dock button[aria-pressed="true"]{background:rgba(190,220,245,.16);color:#fff;box-shadow:inset 0 0 0 1px rgba(220,240,255,.7)}
-.dock svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-.cap{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 78px);text-align:center;font:italic 21px/1.3 "Instrument Serif",Georgia,serif;color:var(--ink);opacity:0;pointer-events:none;transition:opacity .9s}
-.cap.on{opacity:.85;transition-duration:.15s}
-@media (prefers-reduced-motion:reduce){.grain{animation:none}}
+:root {
+  --bg: #05070a;
+  --ink: #a9bccb;
+  --panel-bg: rgba(12, 17, 24, 0.94);
+  --panel-border: rgba(170, 195, 215, 0.22);
+}
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+#st { position: fixed; inset: 0; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#c { cursor: crosshair; touch-action: none; }
+#gl { mix-blend-mode: screen; opacity: 0.85; pointer-events: none; filter: blur(5px); }
+
+.vig {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 46%, transparent 30%, rgba(0,0,0,0.55) 76%, rgba(0,0,0,0.94) 100%);
+}
+.grain {
+  position: fixed;
+  left: -50%;
+  top: -50%;
+  width: 200%;
+  height: 200%;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  animation: g .9s steps(6) infinite;
+}
+@keyframes g {
+  0% { transform: translate(0,0); }
+  25% { transform: translate(-4%,3%); }
+  50% { transform: translate(3%,-5%); }
+  75% { transform: translate(5%,4%); }
+  100% { transform: translate(0,0); }
+}
+
+/* Control Dock */
+.dock {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
+  display: flex;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 40px;
+  background: rgba(8, 11, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: inset 0 0 0 1px var(--panel-border);
+  z-index: 10;
+}
+.dock button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(170, 195, 215, 0.16);
+  transition: box-shadow .25s, background .25s, transform .18s, color .25s;
+}
+.dock button:hover { box-shadow: inset 0 0 0 1px rgba(200, 225, 245, 0.6); color: #fff; }
+.dock button:active { transform: scale(0.88); }
+.dock button[aria-pressed="true"] {
+  background: rgba(190, 220, 245, 0.16);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(220, 240, 255, 0.7);
+}
+.dock svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Settings Panel and High-Contrast Dropdowns */
+.settings-panel {
+  position: fixed;
+  right: 20px;
+  top: 20px;
+  width: 290px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  background: var(--panel-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  padding: 18px;
+  color: #e0ecf8;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.85);
+  transform: translateX(340px);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 20;
+  font-size: 13px;
+}
+.settings-panel.open { transform: translateX(0); }
+.settings-panel h3 {
+  margin: 0 0 14px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 8px;
+}
+.setting-row { margin-bottom: 14px; display: flex; flex-direction: column; gap: 6px; }
+.setting-row label { display: flex; justify-content: space-between; font-weight: 500; opacity: 0.9; }
+.setting-row input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 2px;
+  outline: none;
+}
+.setting-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #cfe6ff;
+  cursor: pointer;
+}
+
+/* Fix for invisible dropdown text */
+.setting-row select {
+  background-color: #0d131c !important;
+  border: 1px solid var(--panel-border) !important;
+  color: #e6f0fa !important;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+.setting-row select option {
+  background-color: #0d131c !important;
+  color: #e6f0fa !important;
+  padding: 8px;
+}
+
+.setting-checkbox { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+.setting-checkbox input { cursor: pointer; accent-color: #6bb0ff; width: 16px; height: 16px; }
+
+.cap {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 78px);
+  text-align: center;
+  font: italic 21px/1.3 "Instrument Serif", Georgia, serif;
+  color: var(--ink);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s;
+  z-index: 5;
+}
+.cap.on { opacity: 0.85; transition-duration: 0.15s; }
 </style>
 </head>
 <body>
+
 <div id="st"><canvas id="c"></canvas><canvas id="gl"></canvas></div>
 <div class="vig"></div>
 <canvas class="grain" id="gr" width="256" height="256"></canvas>
 <div class="cap" id="cap"></div>
+
+<!-- Dock Controls -->
 <div class="dock" id="dock">
-<button data-a="flip" title="Flip polarity (Space)" aria-label="Flip polarity"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5v15M8 9h-.01M16 15h-.01"/></svg></button>
-<button data-a="scatter" title="Scatter (S)" aria-label="Scatter"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg></button>
-<button data-a="swirl" title="Swirl field (V)" aria-label="Swirl field" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 12m0 0c0-1.5 2-1.5 2 0s-1 3-3 3-4-1.5-4-4 2.5-5 5.5-5 6.5 2.5 6.5 6.5"/></svg></button>
-<button data-a="orbit" title="Orbit poles (O)" aria-label="Orbit poles" aria-pressed="false"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-25 12 12)"/><circle cx="12" cy="12" r="1.6"/></svg></button>
-<button data-a="pal" title="Change metal (P)" aria-label="Change metal"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="14" r="3.5"/><circle cx="16.5" cy="14" r="3.5"/><circle cx="12" cy="7.5" r="3.5"/></svg></button>
-<button data-a="snd" title="Sound (M)" aria-label="Sound" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 10v4h3.5L12 18V6L7.5 10zM15.5 9.5a4 4 0 010 5M18 7a7.5 7.5 0 010 10"/></svg></button>
-<button data-a="clear" title="Clear poles (C)" aria-label="Clear poles"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <button data-a="flip" title="Flip Polarity (Space)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><path d="M12 4.5v15M8 9h-.01M16 15h-.01"/></svg></button>
+  <button data-a="scatter" title="Scatter Filings (S)"><svg viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M18.4 5.6l-2.8 2.8M8.4 15.6l-2.8 2.8"/></svg></button>
+  <button data-a="swirl" title="Swirl Force Field (V)" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 12m0 0c0-1.5 2-1.5 2 0s-1 3-3 3-4-1.5-4-4 2.5-5 5.5-5 6.5 2.5 6.5 6.5"/></svg></button>
+  <button data-a="orbit" title="Orbit Active Poles (O)" aria-pressed="false"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(-25 12 12)"/><circle cx="12" cy="12" r="1.6"/></svg></button>
+  <button data-a="pal" title="Cycle Theme (P)"><svg viewBox="0 0 24 24"><circle cx="7.5" cy="14" r="3.5"/><circle cx="16.5" cy="14" r="3.5"/><circle cx="12" cy="7.5" r="3.5"/></svg></button>
+  <button data-a="settings" title="Settings Panel" id="setBtn"><svg viewBox="0 0 24 24"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button>
+  <button data-a="snd" title="Audio Feedback (M)" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 10v4h3.5L12 18V6L7.5 10zM15.5 9.5a4 4 0 010 5M18 7a7.5 7.5 0 010 10"/></svg></button>
+  <button data-a="clear" title="Clear Field (C)"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
 </div>
+
+<!-- Settings Panel -->
+<div class="settings-panel" id="panel">
+  <h3>Configuration Options</h3>
+  <div class="setting-row">
+    <label for="cfgStyle">Material Render Style</label>
+    <select id="cfgStyle">
+      <option value="steel" selected>Realistic Steel (Metallic)</option>
+      <option value="classic">Classic Glow Filings</option>
+    </select>
+  </div>
+  <div class="setting-row">
+    <label for="cfgMode">Interaction Mode</label>
+    <select id="cfgMode">
+      <option value="single" selected>Single Magnetic Pole</option>
+      <option value="dipole">Dipole Magnet Pair</option>
+      <option value="quadrupole">Quadrupole Grid</option>
+    </select>
+  </div>
+  <div class="setting-row">
+    <label>Field Density <span id="densityVal">1.0x</span></label>
+    <input type="range" id="cfgDensity" min="0.4" max="2.2" step="0.2" value="1.0">
+  </div>
+  <div class="setting-row">
+    <label>Viscosity (Damping) <span id="viscVal">7.0</span></label>
+    <input type="range" id="cfgViscosity" min="1.0" max="15.0" step="0.5" value="7.0">
+  </div>
+  <div class="setting-row">
+    <label class="setting-checkbox">
+      <span>Show Magnetic Flux Lines</span>
+      <input type="checkbox" id="cfgFluxLines">
+    </label>
+  </div>
+  <div class="setting-row">
+    <label class="setting-checkbox">
+      <span>Bloom Dynamic Glow</span>
+      <input type="checkbox" id="cfgGlow" checked>
+    </label>
+  </div>
+</div>
+
 <script>
 (()=>{
 const $=id=>document.getElementById(id),cv=$('c'),ctx=cv.getContext('2d'),gl=$('gl'),gx=gl.getContext('2d'),st=$('st'),cap=$('cap');
 let W,H,D,S,F=[],poles=[],rip=[],sp=[],pol=1,mx=0,my=0,smx=0,smy=0,live=false,seen=false,down=false,charge=0,shake=0,speed=0,swirl=false,orbit=false,mute=false,pi=0,ang=0;
+
+/* Configuration Parameters */
+let cfg = { density: 1.0, damping: 7.0, fluxLines: false, glow: true, mode: 'single', style: 'steel' };
+
 const rnd=(a,b)=>a+Math.random()*(b-a),TAU=Math.PI*2;
-const PAL=[{n:'steel',p:[168,205,240],q:[236,150,86]},{n:'ember',p:[255,196,120],q:[255,78,52]},{n:'aurora',p:[110,255,200],q:[180,120,255]},{n:'bone',p:[240,238,225],q:[150,160,170]}];
+const PAL=[
+  {n:'steel',p:[168,205,240],q:[236,150,86]},
+  {n:'ember',p:[255,196,120],q:[255,78,52]},
+  {n:'aurora',p:[110,255,200],q:[180,120,255]},
+  {n:'bone',p:[240,238,225],q:[150,160,170]}
+];
+
 function size(){
   D=Math.min(devicePixelRatio||1,2);W=cv.width=innerWidth*D;H=cv.height=innerHeight*D;gl.width=W>>2;gl.height=H>>2;
-  S=Math.max(9,Math.sqrt(innerWidth*innerHeight/11000))*D;F=[];
+  S=Math.max(9,Math.sqrt(innerWidth*innerHeight/(11000 * cfg.density)))*D;F=[];
   for(let y=S/2;y<H;y+=S)for(let x=S/2;x<W;x+=S){const hx=x+rnd(-.5,.5)*S,hy=y+rnd(-.5,.5)*S;
     F.push({hx,hy,ox:0,oy:0,mx:0,my:0,a:rnd(0,Math.PI),v:0,l:rnd(.5,1.5)*S*.62,k:rnd(-.22,.22),t:Math.random()<.4?1:0,b:0})}
   ctx.fillStyle='#05070a';ctx.fillRect(0,0,W,H);
 }
 addEventListener('resize',size);size();
+
+/* Noise Overlay */
 (()=>{const x=$('gr').getContext('2d'),d=x.createImageData(256,256);for(let i=0;i<d.data.length;i+=4){d.data[i]=d.data[i+1]=d.data[i+2]=Math.random()*255;d.data[i+3]=255}x.putImageData(d,0,0)})();
-/* audio */
+
+/* Audio Engine */
 let ac,out,nG,nF,cO,cG,cF;
 function initAudio(){
   if(ac)return;try{ac=new (window.AudioContext||window.webkitAudioContext)();out=ac.createGain();out.gain.value=mute?0:.6;
@@ -69,6 +273,7 @@ function initAudio(){
   nG=ac.createGain();nG.gain.value=0;n.connect(nF);nF.connect(nG);nG.connect(out);n.start();
   const dr=ac.createOscillator(),dg=ac.createGain();dr.frequency.value=49;dg.gain.value=.05;dr.connect(dg);dg.connect(out);dr.start();}catch(e){ac=null}
 }
+
 const scale=[0,3,5,7,10,12,15,17,19,22];
 function chOn(){if(!ac)return;cO=ac.createOscillator();cG=ac.createGain();cF=ac.createBiquadFilter();cO.type='sawtooth';cO.frequency.value=70;cF.type='lowpass';cF.frequency.value=200;cG.gain.value=0;cO.connect(cF);cF.connect(cG);cG.connect(out);cO.start()}
 function chSet(c){if(!cO)return;const t=ac.currentTime;cO.frequency.setTargetAtTime(70+c*c*330,t,.05);cF.frequency.setTargetAtTime(200+c*2600,t,.05);cG.gain.setTargetAtTime(.02+c*.09,t,.05)}
@@ -77,51 +282,75 @@ function boom(y,s,c){
   if(!ac)return;const now=ac.currentTime,f=(s>0?146.8:130.8)*Math.pow(2,scale[Math.min(9,Math.floor((1-y/H)*10))]/12);
   [1,2.005,3.01,4.02].forEach((m,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.type=i?'sine':'triangle';o.frequency.value=f*m;
     g.gain.setValueAtTime(1e-4,now);g.gain.exponentialRampToValueAtTime((.13+c*.1)/(i+1),now+.01);g.gain.exponentialRampToValueAtTime(1e-4,now+(2.2+c*2)/(i+1));o.connect(g);g.connect(out);o.start(now);o.stop(now+4.5)});
-  const o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(40+c*70,now);o.frequency.exponentialRampToValueAtTime(24,now+.7);
-  g.gain.setValueAtTime(1e-4,now);g.gain.exponentialRampToValueAtTime(.5*(.3+c),now+.015);g.gain.exponentialRampToValueAtTime(1e-4,now+.9);o.connect(g);g.connect(out);o.start(now);o.stop(now+1);
 }
-function rattle(){ /* scatter sound: burst of grit */
+function rattle(){
   if(!ac)return;const now=ac.currentTime,b=ac.createBuffer(1,ac.sampleRate,ac.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,3)*(Math.random()<.35?1:.2);
   const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=b;f.type='highpass';f.frequency.value=2500;g.gain.value=.5;s.connect(f);f.connect(g);g.connect(out);s.start(now);
 }
-/* actions */
+
 function say(t){cap.textContent=t;cap.classList.add('on');clearTimeout(say.t);say.t=setTimeout(()=>cap.classList.remove('on'),1100)}
+
 const act={
   flip(){pol=-pol;say(pol>0?'north':'south')},
   scatter(){initAudio();for(const f of F){const a=rnd(0,TAU),v=rnd(.2,1)*2600*D;f.mx=Math.cos(a)*v;f.my=Math.sin(a)*v;f.v+=rnd(-60,60)}shake=Math.max(shake,14);rattle();say('scatter')},
   swirl(b){swirl=!swirl;b.setAttribute('aria-pressed',swirl);say(swirl?'swirl':'attract')},
   orbit(b){orbit=!orbit;b.setAttribute('aria-pressed',orbit);say(orbit?'orbit':'still')},
   pal(){pi=(pi+1)%PAL.length;buildCols();say(PAL[pi].n)},
+  settings(){$('panel').classList.toggle('open')},
   snd(b){mute=!mute;b.setAttribute('aria-pressed',!mute);if(out)out.gain.setTargetAtTime(mute?0:.6,ac.currentTime,.05);say(mute?'muted':'sound on')},
   clear(){poles=[];say('cleared')}
 };
+
 $('dock').addEventListener('click',e=>{const b=e.target.closest('button');if(b){act[b.dataset.a](b);b.blur()}});
 const keys={' ':'flip',s:'scatter',v:'swirl',o:'orbit',p:'pal',m:'snd',c:'clear',Escape:'clear'};
 addEventListener('keydown',e=>{const k=keys[e.key.length>1?e.key:e.key.toLowerCase()];if(k&&!e.repeat){e.preventDefault();act[k](document.querySelector(`[data-a=${k}]`))}});
-/* input */
+
+/* Dynamic Settings Handlers */
+$('cfgDensity').addEventListener('change', e=>{ cfg.density = parseFloat(e.target.value);$('densityVal').textContent = cfg.density + 'x'; size(); });
+$('cfgViscosity').addEventListener('input', e=>{ cfg.damping = parseFloat(e.target.value);$('viscVal').textContent = cfg.damping; });
+$('cfgMode').addEventListener('change', e=>{ cfg.mode = e.target.value; say('mode: ' + cfg.mode); });$('cfgStyle').addEventListener('change', e=>{ cfg.style = e.target.value; say('style: ' + cfg.style); });
+$('cfgFluxLines').addEventListener('change', e=>{ cfg.fluxLines = e.target.checked; });$('cfgGlow').addEventListener('change', e=>{ cfg.glow = e.target.checked; gl.style.display = cfg.glow ? 'block' : 'none'; });
+
 function move(e){mx=e.clientX*D;my=e.clientY*D;if(!seen){seen=true;smx=mx;smy=my}live=true}
 cv.addEventListener('pointermove',move);
 cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);move(e);initAudio();if(ac&&ac.state==='suspended')ac.resume();down=true;charge=0;chOn()});
+
+function addPoleAt(x, y, polarity, c) {
+  poles.push({x, y, q: polarity*(1+c*1.6), born:performance.now(), ph:rnd(0,TAU)});
+  if(poles.length > 8) poles.shift();
+  rip.push({x, y, t:0, s:polarity, a:.6+c*1.4, sp:.5+c*.6});
+  const n=Math.floor(20+c*140),P=PAL[pi];
+  for(let i=0;i<n;i++){const a=rnd(0,TAU),v=rnd(.2,1)*(300+c*1300)*D;sp.push({x, y, vx:Math.cos(a)*v, vy:Math.sin(a)*v, l:rnd(.5,1.4), c:polarity>0?P.p:P.q})}
+}
+
 function release(){
   if(!down)return;down=false;const c=Math.min(1,charge);chOff();
-  poles.push({x:smx,y:smy,q:pol*(1+c*1.6),born:performance.now(),ph:rnd(0,TAU)});if(poles.length>5)poles.shift();
-  rip.push({x:smx,y:smy,t:0,s:pol,a:.6+c*1.4,sp:.5+c*.6});
-  const n=Math.floor(20+c*140),P=PAL[pi];
-  for(let i=0;i<n;i++){const a=rnd(0,TAU),v=rnd(.2,1)*(300+c*1300)*D;sp.push({x:smx,y:smy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:rnd(.5,1.4),c:pol>0?P.p:P.q})}
-  shake=Math.max(shake,4+c*22);boom(smy,pol,c);if(navigator.vibrate)try{navigator.vibrate(12+c*40)}catch(e){}
+  if(cfg.mode === 'single') {
+    addPoleAt(smx, smy, pol, c);
+  } else if(cfg.mode === 'dipole') {
+    addPoleAt(smx - 40*D, smy, pol, c);
+    addPoleAt(smx + 40*D, smy, -pol, c);
+  } else if(cfg.mode === 'quadrupole') {
+    addPoleAt(smx - 35*D, smy - 35*D, pol, c);
+    addPoleAt(smx + 35*D, smy - 35*D, -pol, c);
+    addPoleAt(smx - 35*D, smy + 35*D, -pol, c);
+    addPoleAt(smx + 35*D, smy + 35*D, pol, c);
+  }
+  shake=Math.max(shake,4+c*22);boom(smy,pol,c);
   pol=-pol;charge=0;
 }
 addEventListener('pointerup',release);addEventListener('pointercancel',release);
-cv.addEventListener('dblclick',()=>act.clear());
-/* render */
+
 const NB=6;let cols=[];
 function buildCols(){const P=PAL[pi];cols=[];
   for(const rgb of [P.p,P.q]){const row=[];for(let i=0;i<NB;i++){const k=(i+1)/NB,m=.3+.7*k;
     row.push(`rgba(${(rgb[0]*m+40*(1-k))|0},${(rgb[1]*m+46*(1-k))|0},${(rgb[2]*m+54*(1-k))|0},${.3+k*.7})`)}cols.push(row)}}
 buildCols();
+
 const paths=[];for(let i=0;i<NB*4;i++)paths.push([]);
 let last=performance.now();
+
 function frame(now){
   const dt=Math.min(.033,(now-last)/1e3),T=now/1e3;
   last=now;let tx=mx,ty=my;
@@ -130,17 +359,22 @@ function frame(now){
   speed+=(Math.min(1,Math.hypot(smx-px,smy-py)/D/dt/1800)-speed)*.15;
   if(down){charge=Math.min(1.25,charge+dt/1.1);chSet(Math.min(1,charge));shake=Math.max(shake,Math.min(1,charge)*3)}
   if(ac&&nG){nG.gain.setTargetAtTime(speed*.09,ac.currentTime,.05);nF.frequency.setTargetAtTime(300+speed*1800,ac.currentTime,.05)}
+  
   shake*=Math.pow(.02,dt);
   st.style.transform=shake>.05?`translate(${rnd(-1,1)*shake}px,${rnd(-1,1)*shake}px) scale(${1+shake*.0007})`:'none';
+
   if(orbit){ang+=dt*.6;const cx=W/2,cy=H/2;for(const p of poles){if(p.ox===undefined){p.ox=p.x-cx;p.oy=p.y-cy}const c=Math.cos(dt*.6),s=Math.sin(dt*.6),nx=p.ox*c-p.oy*s,ny=p.ox*s+p.oy*c;p.ox=nx;p.oy=ny;p.x=cx+nx;p.y=cy+ny}}
   else for(const p of poles)p.ox=undefined;
+
   ctx.globalCompositeOperation='source-over';ctx.fillStyle='rgba(5,7,10,.34)';ctx.fillRect(0,0,W,H);
   const c=Math.min(1,charge);
   const P=poles.map(p=>({x:p.x,y:p.y,q:p.q*(1+Math.max(0,1-(now-p.born)/600)*1.6)}));
   P.push({x:smx,y:smy,q:pol*.9*(1+c*2.4)});
+
   for(let i=rip.length-1;i>=0;i--){rip[i].t+=dt;if(rip[i].t>2.6)rip.splice(i,1)}
   const wd=100*D,base=Math.max(W,H)*.6,e0=800*D*D;
   for(let i=0;i<NB*4;i++)paths[i].length=0;
+
   for(const f of F){
     const x=f.hx+f.ox,y=f.hy+f.oy;let fx=0,fy=0,pot=0;
     for(const p of P){const dx=p.x-x,dy=p.y-y,d2=dx*dx+dy*dy+e0,inv=p.q/d2;fx+=dx*inv;fy+=dy*inv;pot+=p.q/Math.sqrt(d2)}
@@ -150,27 +384,84 @@ function frame(now){
     for(const r of rip){const d=Math.hypot(x-r.x,y-r.y),e=(d-r.t*base*r.sp)/wd,w=Math.exp(-e*e)*(1-r.t/2.6)*r.a;if(w>.01){wv+=w;kick+=w*r.s}}
     const diff=((tgt-f.a+Math.PI*1.5)%Math.PI)-Math.PI/2;
     f.v+=diff*(30*dt)+kick*(dt*80)*Math.sin(f.hx*.011+f.hy*.014);f.v*=Math.pow(.003,dt);f.a+=f.v*dt*6;
-    /* physical clumping: filings crawl toward strong field, spring home */
+    
     const dr=Math.min(1,m*D*280),pull=Math.min(S*1.4,m*D*S*95)*(pot>0||swirl?1:.7);
     const tox=m>0?fx/m*pull:0,toy=m>0?fy/m*pull:0;
-    f.mx+=((tox-f.ox)*70-f.mx*7)*dt;f.my+=((toy-f.oy)*70-f.my*7)*dt;f.ox+=f.mx*dt;f.oy+=f.my*dt;
+    f.mx+=((tox-f.ox)*70-f.mx*cfg.damping)*dt;f.my+=((toy-f.oy)*70-f.my*cfg.damping)*dt;f.ox+=f.mx*dt;f.oy+=f.my*dt;
     const it=Math.min(1,Math.pow(dr,.7)*.7+wv*.85+Math.min(.4,Math.abs(f.v)*.06));f.b+=(it-f.b)*.3;
     const len=f.l*(.55+f.b*.8),cs=Math.cos(f.a),sn=Math.sin(f.a),h=len/2,kx=-sn*f.k*len,ky=cs*f.k*len,X=f.hx+f.ox,Y=f.hy+f.oy;
     paths[((pot>=0?0:NB)+Math.min(NB-1,Math.floor(f.b*NB)))+f.t*NB*2].push(X-cs*h,Y-sn*h,X+kx,Y+ky,X+cs*h,Y+sn*h);
   }
-  ctx.globalCompositeOperation='lighter';ctx.lineCap='round';ctx.lineJoin='round';
-  for(let i=0;i<NB*4;i++){const a=paths[i];if(!a.length)continue;const pl=i%(NB*2);
-    ctx.strokeStyle=cols[pl<NB?0:1][pl%NB];ctx.lineWidth=(i>=NB*2?1.9:1.1)*D;
-    ctx.beginPath();for(let j=0;j<a.length;j+=6){ctx.moveTo(a[j],a[j+1]);ctx.lineTo(a[j+2],a[j+3]);ctx.lineTo(a[j+4],a[j+5])}ctx.stroke()}
+
+  /* Material Style Rendering Pipeline */
+  if(cfg.style === 'steel') {
+    ctx.globalCompositeOperation='source-over';
+    ctx.lineCap='round';ctx.lineJoin='round';
+    for(let i=0;i<NB*4;i++){
+      const a=paths[i];if(!a.length)continue;
+      const highlight = Math.min(255, 180 + (i % 6) * 12);
+      ctx.strokeStyle = `rgba(${highlight}, ${highlight + 10}, ${highlight + 20}, 0.95)`;
+      ctx.lineWidth = (i >= NB*2 ? 2.2 : 1.3) * D;
+      ctx.beginPath();
+      for(let j=0;j<a.length;j+=6){ctx.moveTo(a[j],a[j+1]);ctx.lineTo(a[j+2],a[j+3]);ctx.lineTo(a[j+4],a[j+5])}
+      ctx.stroke();
+    }
+  } else {
+    ctx.globalCompositeOperation='lighter';
+    ctx.lineCap='round';ctx.lineJoin='round';
+    for(let i=0;i<NB*4;i++){
+      const a=paths[i];if(!a.length)continue;
+      const pl=i%(NB*2);
+      ctx.strokeStyle=cols[pl<NB?0:1][pl%NB];
+      ctx.lineWidth=(i>=NB*2?1.9:1.1)*D;
+      ctx.beginPath();
+      for(let j=0;j<a.length;j+=6){ctx.moveTo(a[j],a[j+1]);ctx.lineTo(a[j+2],a[j+3]);ctx.lineTo(a[j+4],a[j+5])}
+      ctx.stroke();
+    }
+  }
+
+  /* Flux Connecting Vector Lines */
+  if(cfg.fluxLines && P.length > 1) {
+    ctx.globalCompositeOperation='source-over';
+    ctx.lineWidth = 1.0 * D;
+    ctx.strokeStyle = 'rgba(180, 210, 240, 0.25)';
+    ctx.beginPath();
+    for(let i = 0; i < P.length; i++) {
+      for(let j = i + 1; j < P.length; j++) {
+        ctx.moveTo(P[i].x, P[i].y);
+        ctx.lineTo(P[j].x, P[j].y);
+      }
+    }
+    ctx.stroke();
+  }
+
   ctx.lineWidth=1.6*D;
   for(let i=sp.length-1;i>=0;i--){const s=sp[i];s.l-=dt;if(s.l<=0){sp.splice(i,1);continue}
     s.vx*=Math.pow(.05,dt);s.vy*=Math.pow(.05,dt);s.x+=s.vx*dt;s.y+=s.vy*dt;
     ctx.strokeStyle=`rgba(${s.c[0]},${s.c[1]},${s.c[2]},${Math.min(1,s.l)})`;ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(s.x-s.vx*.03,s.y-s.vy*.03);ctx.stroke()}
+
   const PL=PAL[pi];
-  P.forEach((p,i)=>{const cur=i===P.length-1,r=(46+(cur?c*70:0))*D,col=(p.q>0?PL.p:PL.q).join(',');
-    const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);g.addColorStop(0,`rgba(${col},.55)`);g.addColorStop(1,`rgba(${col},0)`);ctx.fillStyle=g;ctx.fillRect(p.x-r,p.y-r,r*2,r*2)});
-  if(down){const r=(160-c*130)*D;ctx.strokeStyle=`rgba(255,255,255,${.15+c*.5})`;ctx.lineWidth=1.5*D;ctx.beginPath();ctx.arc(smx,smy,Math.max(8*D,r),0,TAU);ctx.stroke()}
-  gx.clearRect(0,0,gl.width,gl.height);gx.filter='blur(3px) brightness(1.5)';gx.drawImage(cv,0,0,gl.width,gl.height);gx.filter='none';
+  P.forEach((p,i)=>{
+    const cur=i===P.length-1,r=(46+(cur?c*70:0))*D,col=(p.q>0?PL.p:PL.q).join(',');
+    const g=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
+    g.addColorStop(0,`rgba(${col},.55)`);
+    g.addColorStop(1,`rgba(${col},0)`);
+    ctx.fillStyle=g;ctx.fillRect(p.x-r,p.y-r,r*2,r*2);
+  });
+
+  if(down){
+    const r=(160-c*130)*D;
+    ctx.strokeStyle=`rgba(255,255,255,${.15+c*.5})`;
+    ctx.lineWidth=1.5*D;
+    ctx.beginPath();ctx.arc(smx,smy,Math.max(8*D,r),0,TAU);ctx.stroke();
+  }
+
+  if(cfg.glow) {
+    gx.clearRect(0,0,gl.width,gl.height);
+    gx.filter='blur(3px) brightness(1.5)';
+    gx.drawImage(cv,0,0,gl.width,gl.height);
+  }
+  
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
