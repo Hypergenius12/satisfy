@@ -2,6 +2,206 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<title>Interactive Merged Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+  body, html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #05060d;
+    overflow: hidden;
+    font-family: system-ui, -apple-system, sans-serif;
+  }
+  #viewer {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: transparent;
+  }
+  
+  /* Non-AI Custom CSS Menu */
+  .menu-nav {
+    position: fixed;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 20, 25, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 6px;
+    border-radius: 40px;
+    display: flex;
+    gap: 8px;
+    z-index: 10000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.1);
+  }
+  .menu-btn {
+    background: transparent;
+    color: #8892b0;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 30px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .menu-btn:hover {
+    color: #e2e8f0;
+    background: rgba(255,255,255,0.08);
+  }
+  .menu-btn.active {
+    background: #e2e8f0;
+    color: #0f1419;
+    box-shadow: 0 2px 10px rgba(255,255,255,0.25);
+  }
+</style>
+</head>
+<body>
+
+<div class="menu-nav">
+  <button class="menu-btn active" id="btn-globs">Globs</button>
+  <button class="menu-btn" id="btn-filings">Filings</button>
+</div>
+
+<iframe id="viewer"></iframe>
+
+<!-- Source 1: globs3.html (stored safely to prevent DOM interference) -->
+<script type="text/plain" id="src-globs">
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Globs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+html,body{margin:0;height:100%;background:#05060d;overflow:hidden;touch-action:none}
+canvas{width:100%;height:100%;display:block;cursor:grab}
+#h{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff9;font:13px system-ui,sans-serif;letter-spacing:.15em;text-transform:uppercase;pointer-events:none;transition:opacity 1.5s}
+</style></head><body>
+<canvas id="c"></canvas><div id="h">grab the goo · fling it · scroll or pinch to zoom</div>
+<script>
+const c=document.getElementById('c'),gl=c.getContext('webgl');
+function rs(){const d=Math.min(devicePixelRatio||1,1.25);c.width=innerWidth*d;c.height=innerHeight*d;gl.viewport(0,0,c.width,c.height)}
+addEventListener('resize',rs);rs();
+const sh=(t,s)=>{const h=gl.createShader(t);gl.shaderSource(h,s);gl.compileShader(h);return h};
+const P=gl.createProgram();
+gl.attachShader(P,sh(gl.VERTEX_SHADER,'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}'));
+gl.attachShader(P,sh(gl.FRAGMENT_SHADER,`precision highp float;
+uniform vec2 R;uniform float T,K,H;uniform vec3 RO;uniform vec4 B[14];uniform vec4 RP[4];
+float gd;
+float smin(float a,float b,float k){float h=max(k-abs(a-b),0.)/k;return min(a,b)-h*h*k*.25;}
+float map(vec3 p){float d=1e5;for(int i=0;i<14;i++){d=smin(d,length(p-B[i].xyz)-B[i].w,K);}gd=d;return smin(d,p.y+1.5,K*.8);}
+vec3 nor(vec3 p){vec2 e=vec2(.004,-.004);return normalize(e.xyy*map(p+e.xyy)+e.yyx*map(p+e.yyx)+e.yxy*map(p+e.yxy)+e.xxx*map(p+e.xxx));}
+vec3 pal(float x){return .5+.5*cos(6.283*(x+H+vec3(0.,.33,.67)));}
+vec3 env(vec3 r){
+ vec3 c=mix(vec3(.02,.03,.09),vec3(.25,.15,.45),smoothstep(-.6,.9,r.y));
+ c+=pal(.1)*exp(-pow((r.y-.15)*7.,2.))*.5*(.5+.5*sin(r.x*3.+T*.3));
+ c+=vec3(1.,.95,.85)*pow(max(dot(r,normalize(vec3(.5,.8,.6))),0.),60.)*4.;
+ c+=vec3(.4,.8,1.)*pow(max(dot(r,normalize(vec3(-.7,.3,.5))),0.),30.)*2.;
+ return c;}
+void main(){
+ vec2 uv=(gl_FragCoord.xy*2.-R)/R.y;
+ vec3 f=normalize(vec3(0.,-.3,0.)-RO),rt=normalize(cross(f,vec3(0.,1.,0.))),up=cross(rt,f);
+ vec3 ro=RO,rd=normalize(uv.x*rt+uv.y*up+1.6*f);
+ float t=0.,d=0.,glow=0.;bool hit=false;
+ for(int i=0;i<64;i++){d=map(ro+rd*t);glow+=exp(-gd*2.2)*.011;if(d<.003){hit=true;break;}t+=d*.9;if(t>40.)break;}
+ vec3 bg=env(rd)*.28;
+ vec3 col=bg+pal(T*.03)*glow*.8;
+ if(hit){
+  vec3 p=ro+rd*t,n=nor(p),v=-rd;
+  float nv=max(dot(n,v),0.),fr=pow(1.-nv,3.);
+  vec3 r=reflect(rd,n),ir=pal(nv*1.3+p.y*.15+T*.05);
+  float fl=smoothstep(-1.15,-1.45,p.y)*step(.6,n.y);
+  float ao=clamp(.4+.6*map(p+n*.3)/.3,0.,1.);
+  vec3 blob=mix(vec3(.03,.04,.08),ir*.5,.5)+env(refract(rd,n,.75))*ir*.35+env(r)*(.3+.7*fr)*mix(vec3(1.),ir,.45)+ir*fr*.6;
+  blob+=pow(max(dot(r,normalize(vec3(.5,.8,.6))),0.),120.)*3.;blob*=.6+.4*ao;
+  vec3 rc=env(r);
+  if(fl>.01){vec3 q=p+n*.02;float u=0.;bool h2=false;
+   for(int i=0;i<28;i++){float e=map(q+r*u);if(e<.004){h2=true;break;}u+=e;if(u>8.)break;}
+   if(h2){vec3 s=q+r*u,n2=nor(s);float nv2=max(dot(n2,-r),0.);rc=pal(nv2*1.3+s.y*.15+T*.05)*(.5+.5*n2.y)+env(reflect(r,n2))*.4+pal(nv2)*pow(1.-nv2,2.)*.7;}
+  }
+  float rg=0.;for(int i=0;i<4;i++){float rr=length(p.xz-RP[i].xy);rg+=exp(-pow((rr-RP[i].z*3.5)*5.,2.))*RP[i].w*exp(-RP[i].z*1.6);}
+  vec2 g=abs(fract(p.xz*.7)-.5);float grid=smoothstep(.47,.5,max(g.x,g.y));
+  vec3 flr=vec3(.015,.02,.045)+pal(p.x*.05)*grid*.12*exp(-length(p.xz)*.12)+rc*(.18+.75*fr)+pal(.3)*rg*.8;
+  col=mix(blob,flr*(.3+.7*ao),fl);
+  col=mix(col,bg,smoothstep(10.,38.,t));
+ }
+ col*=1.-.3*dot(uv,uv)*.4;
+ col=pow(col/(1.+col*.35),vec3(.9));
+ gl_FragColor=vec4(col,1.);}`));
+gl.linkProgram(P);if(!gl.getProgramParameter(P,gl.LINK_STATUS))console.error(gl.getProgramInfoLog(P));gl.useProgram(P);
+gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+const a=gl.getAttribLocation(P,'p');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+const U=n=>gl.getUniformLocation(P,n),uR=U('R'),uT=U('T'),uK=U('K'),uH=U('H'),uRO=U('RO'),uB=U('B'),uRP=U('RP'),RPa=new Float32Array(16);
+const NB=14,bl=[],FY=-1.5;
+for(let i=0;i<NB;i++)bl.push({x:(Math.random()-.5)*4,y:1+Math.random()*4,z:(Math.random()-.5)*.6,vx:0,vy:0,vz:0,r:.5-(i%7)*.028,ls:0});
+const m={x:0,y:0,px:0,py:0,vx:0,vy:0,on:false,down:false,h:0,t0:0,cx:0,cy:0};
+let hue=0,hueT=0,idle=0;
+let zoom=6,zT=6;const cam=()=>[m.cx*.5,.7+m.cy*.2,zoom];
+function pos(e){const ux=(e.clientX*2-innerWidth)/innerHeight,uy=-(e.clientY*2-innerHeight)/innerHeight;m.cx+=(ux-m.cx)*.2;m.cy+=(uy-m.cy)*.2;
+const ro=cam(),tg=[0,-.3,0];let f=[tg[0]-ro[0],tg[1]-ro[1],tg[2]-ro[2]];const nn=v=>{const l=Math.hypot(...v);return v.map(x=>x/l)};f=nn(f);
+const r=nn([-f[2],0,f[0]]);const u=[r[1]*f[2]-r[2]*f[1],r[2]*f[0]-r[0]*f[2],r[0]*f[1]-r[1]*f[0]];
+const rd=nn([ux*r[0]+uy*u[0]+1.6*f[0],ux*r[1]+uy*u[1]+1.6*f[1],ux*r[2]+uy*u[2]+1.6*f[2]]);
+const t=-ro[2]/rd[2];m.x=ro[0]+rd[0]*t;m.y=ro[1]+rd[1]*t;m.on=true;idle=0}
+let ac;
+function bloop(f,v,d,sw){if(!ac)return;const o=ac.createOscillator(),g=ac.createGain(),n=ac.currentTime;o.type='sine';
+o.frequency.setValueAtTime(f,n);o.frequency.exponentialRampToValueAtTime(f*sw,n+d*.6);
+g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(v,n+.006);g.gain.exponentialRampToValueAtTime(.0001,n+d);
+o.connect(g).connect(ac.destination);o.start(n);o.stop(n+d+.05)}
+const pent=[0,2,4,7,9];const pf=i=>160*Math.pow(2,(pent[i%5]+12*Math.floor(i/5))/12);
+const pts=new Map();let pd=0,dr,dg;const dist2=()=>{const[a,b]=[...pts.values()];return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY)};const cz=v=>Math.min(14,Math.max(2.6,v));
+c.addEventListener('wheel',e=>{e.preventDefault();zT=cz(zT*Math.exp(e.deltaY*.0012))},{passive:false});
+c.addEventListener('pointerdown',e=>{pts.set(e.pointerId,e);if(pts.size==2){pd=dist2();m.down=false;return}try{ac=ac||new (window.AudioContext||webkitAudioContext)()}catch(_){}pos(e);m.px=m.x;m.py=m.y;m.down=true;m.t0=performance.now();
+c.setPointerCapture(e.pointerId);c.style.cursor='grabbing';hueT+=.17;if(ac&&!dr){dr=ac.createOscillator();dg=ac.createGain();dr.type='sine';dg.gain.value=0;dr.connect(dg).connect(ac.destination);dr.start()}bloop(120,.22,.5,.6);document.getElementById('h').style.opacity=0});
+c.addEventListener('pointermove',e=>{if(pts.has(e.pointerId))pts.set(e.pointerId,e);if(pts.size==2){const d=dist2();zT=cz(zT*pd/d);pd=d;return}pos(e)});
+c.addEventListener('pointerup',e=>{pts.delete(e.pointerId);if(!m.down)return;m.down=false;c.style.cursor='grab';
+const s=performance.now()-m.t0<220?1:.25;
+for(const b of bl){const dx=b.x-m.x,dy=b.y-m.y,d=Math.hypot(dx,dy)+.05;b.vx+=dx/d*4*s+(Math.random()-.5);b.vy+=dy/d*4*s+2*s+Math.random()*2;b.vx*=1.15;b.vy*=1.15}
+bloop(220,.2,.4,2.2)});
+c.addEventListener('pointerleave',e=>{pts.delete(e.pointerId);m.on=false});
+const rip=[0,0,0,0].map(()=>({x:0,z:0,t:-9,s:0}));let ri=0;const F=new Float32Array(NB*4);let T=0,pt=performance.now();
+function sim(dt){
+ const hw=Math.max(zoom,6)*.6*innerWidth/innerHeight*.95;
+ for(let i=0;i<NB;i++){const b=bl[i];let ax=0,ay=-10,az=-b.z*6;
+  const held=m.down;
+  if(held){const an=T*2.5+i*2.4,rr=.05+.045*(i%6),tx=m.x+Math.cos(an)*rr,ty=m.y+Math.sin(an)*rr;ax=(tx-b.x)*(60+i*3)-b.vx*13;ay=(ty-b.y)*(60+i*3)-b.vy*13}
+  for(let j=0;j<NB;j++){if(j==i)continue;const o=bl[j],dx=b.x-o.x,dy=b.y-o.y,d=Math.hypot(dx,dy)+.001,lim=(b.r+o.r)*(held?.3:.8);
+   if(d<lim){const f=(lim-d)*30;ax+=dx/d*f;ay+=dy/d*f}else if(d<1.8){const f=(d-lim)*(held?0:2.2);ax-=dx/d*f;ay-=dy/d*f}}
+  if(m.on&&!held){const dx=b.x-m.x,dy=b.y-m.y,d=Math.hypot(dx,dy)+.05,w=Math.exp(-d*d*2.5);ax+=dx/d*w*30;ay+=dy/d*w*20;b.vx+=m.vx*w*.06;b.vy+=m.vy*w*.06}
+  b.vx+=ax*dt;b.vy+=ay*dt;b.vz+=az*dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.z+=b.vz*dt;
+  const fy=FY+b.r*.5;
+  if(b.y<fy){b.y=fy;if(b.vy<-1.2){const now=performance.now();if(now-b.ls>110){b.ls=now;bloop(pf(i%10)*(b.r>.4?1:1.5),Math.min(.16,-b.vy*.028),.3,1.7)}
+   b.vz+=(Math.random()-.5)*2;rip[ri=(ri+1)%4]={x:b.x,z:b.z,t:T,s:Math.min(1,-b.vy*.15)}}b.vy=-b.vy*.4}
+  if(b.y<fy+.06){const fr=Math.pow(.25,dt);b.vx*=fr}
+  if(b.x>hw){b.x=hw;b.vx*=-.5}else if(b.x<-hw){b.x=-hw;b.vx*=-.5}
+  const dmp = Math.pow(.6, dt);
+  b.vx *= dmp;
+  b.vz *= dmp;
+  b.vx*=Math.pow(.6,dt)}
+}
+function frame(){
+ const n=performance.now(),dt=Math.min((n-pt)/1000,.033);pt=n;T+=dt;idle+=dt;zoom+=(zT-zoom)*Math.min(1,dt*7);
+ m.vx+=((m.x-m.px)/dt-m.vx)*.3;m.vy+=((m.y-m.py)/dt-m.vy)*.3;m.px=m.x;m.py=m.y;
+ m.h+=((m.down?1:0)-m.h)*Math.min(1,dt*8);hue+=(hueT-hue)*dt*2;if(dr){dg.gain.value+=(m.h*.07-dg.gain.value)*.1;dr.frequency.value=80+m.h*30+Math.min(Math.hypot(m.vx,m.vy),40)*1.5}
+ if(idle>2.5&&!m.down){idle=1.8;const b=bl[Math.floor(Math.random()*NB)];b.vy=6+Math.random()*3;b.vx=(Math.random()-.5)*4;bloop(pf(Math.floor(Math.random()*10)),.08,.3,1.6)}
+ sim(dt/2);sim(dt/2);
+ for(let i=0;i<NB;i++){const b=bl[i],sp=Math.min(Math.hypot(b.vx,b.vy),12);
+  F[i*4]=b.x;F[i*4+1]=b.y;F[i*4+2]=b.z;F[i*4+3]=b.r*(1+.06*Math.sin(T*3+i*1.7)+.15*m.h)*(1+sp*.008)}
+ gl.uniform2f(uR,c.width,c.height);gl.uniform1f(uT,T);gl.uniform1f(uK,.5+.35*m.h);gl.uniform1f(uH,hue);gl.uniform3fv(uRO,cam());gl.uniform4fv(uB,F);rip.forEach((r,i)=>{const a=T-r.t;RPa.set([r.x,r.z,a,a>3?0:r.s],i*4)});gl.uniform4fv(uRP,RPa);
+ gl.drawArrays(gl.TRIANGLES,0,3);requestAnimationFrame(frame)}
+frame();
+<//script></body></html>
+</script>
+
+<!-- Source 2: filings.html (stored safely to prevent DOM interference) -->
+<script type="text/plain" id="src-filings">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
 <title>Filings - WebGL Realism Edition</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@1&display=swap">
@@ -467,6 +667,36 @@ function frame(now){
 requestAnimationFrame(frame);
 setTimeout(()=>say('press and hold. let go.'),1600);
 })();
+<//script>
+</body>
+</html>
 </script>
+
+<script>
+  // UI and Context Management Script
+  const viewer = document.getElementById('viewer');
+  const btnGlobs = document.getElementById('btn-globs');
+  const btnFilings = document.getElementById('btn-filings');
+  
+  // Extracting the HTML sources while safely reverting the anti-termination tag to its original state
+  const srcGlobs = document.getElementById('src-globs').textContent.replaceAll('<//script>', '</' + 'script>');
+  const srcFilings = document.getElementById('src-filings').textContent.replaceAll('<//script>', '</' + 'script>');
+
+  function loadInteractive(src, activeBtn) {
+    // Setting srcdoc completely overwrites the context, destroying old WebGL loops/event listeners naturally
+    viewer.srcdoc = src;
+    btnGlobs.classList.remove('active');
+    btnFilings.classList.remove('active');
+    activeBtn.classList.add('active');
+  }
+
+  // Bind Menu Interactions
+  btnGlobs.addEventListener('click', () => loadInteractive(srcGlobs, btnGlobs));
+  btnFilings.addEventListener('click', () => loadInteractive(srcFilings, btnFilings));
+
+  // Initialize Default State
+  loadInteractive(srcGlobs, btnGlobs);
+</script>
+
 </body>
 </html>
